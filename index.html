@@ -213,12 +213,27 @@
                     return;
                 }
                 
+                // Check for existing responses
+                const responsesResponse = await fetch(`https://api.github.com/repos/${REPO}/contents/responses`, {
+                    headers: { 
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                let existingResponses = [];
+                if (responsesResponse.ok) {
+                    const responseFiles = await responsesResponse.json();
+                    existingResponses = responseFiles.map(f => f.name);
+                }
+                
                 // Load content of each question file
                 const questions = await Promise.all(
                     questionFiles.map(async file => {
                         const contentResponse = await fetch(file.download_url);
                         const content = await contentResponse.text();
-                        return { filename: file.name, content, sha: file.sha };
+                        const hasResponse = existingResponses.includes(file.name);
+                        return { filename: file.name, content, sha: file.sha, hasResponse };
                     })
                 );
                 
@@ -252,7 +267,7 @@
                 const parts = q.filename.replace('.md', '').split('-');
                 const instance = parts.slice(3).join('-') || 'unknown';
                 
-                return { ...q, priority, title, instance };
+                return { ...q, priority, title, instance, hasResponse: q.hasResponse };
             });
             
             // Sort by priority (urgent first)
@@ -261,17 +276,34 @@
                 return priorityOrder[a.priority] - priorityOrder[b.priority];
             });
             
-            container.innerHTML = parsed.map(q => `
-                <div class="question ${q.priority}">
-                    <div class="priority">${q.priority.toUpperCase()}</div>
-                    <h3>${q.title}</h3>
-                    <div class="meta">📁 ${q.instance} • 🕒 ${q.filename.substring(0, 16)}</div>
-                    <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-size: 14px;">${q.content}</pre>
-                    <textarea id="response-${q.filename}" placeholder="Your response..."></textarea>
-                    <br>
-                    <button onclick="respondToQuestion('${q.filename}', '${q.sha}', event)">Send Response</button>
-                </div>
-            `).join('');
+            container.innerHTML = parsed.map(q => {
+                if (q.hasResponse) {
+                    return `
+                        <div class="question ${q.priority}" style="opacity: 0.7;">
+                            <div class="priority">${q.priority.toUpperCase()}</div>
+                            <h3>${q.title}</h3>
+                            <div class="meta">📁 ${q.instance} • 🕒 ${q.filename.substring(0, 16)}</div>
+                            <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-size: 14px;">${q.content}</pre>
+                            <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin-top: 10px;">
+                                <strong>✅ Already Answered</strong>
+                                <p style="margin: 5px 0; color: #666;">This question has been answered and is awaiting processing.</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="question ${q.priority}">
+                            <div class="priority">${q.priority.toUpperCase()}</div>
+                            <h3>${q.title}</h3>
+                            <div class="meta">📁 ${q.instance} • 🕒 ${q.filename.substring(0, 16)}</div>
+                            <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-size: 14px;">${q.content}</pre>
+                            <textarea id="response-${q.filename}" placeholder="Your response..."></textarea>
+                            <br>
+                            <button onclick="respondToQuestion('${q.filename}', '${q.sha}', event)">Send Response</button>
+                        </div>
+                    `;
+                }
+            }).join('');
         }
         
         async function respondToQuestion(filename, sha, event) {
@@ -286,10 +318,29 @@
             
             // Disable button and show loading state
             button.disabled = true;
-            button.textContent = 'Sending...';
+            button.textContent = 'Checking...';
             button.style.opacity = '0.6';
             
             try {
+                // First check if response already exists
+                const checkResponse = await fetch(`https://api.github.com/repos/${REPO}/contents/responses/${filename}`, {
+                    headers: { 
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                if (checkResponse.ok) {
+                    // Response already exists
+                    button.textContent = '❌ Already Answered';
+                    button.style.background = '#dc3545';
+                    alert('This question has already been answered!');
+                    setTimeout(() => loadData(), 1000);
+                    return;
+                }
+                
+                button.textContent = 'Sending...';
+                
                 // Upload response file
                 await fetch(`https://api.github.com/repos/${REPO}/contents/responses/${filename}`, {
                     method: 'PUT',
