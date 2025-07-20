@@ -107,14 +107,22 @@
                 
                 const files = await response.json();
                 
-                if (!Array.isArray(files)) {
+                if (!Array.isArray(files) || files.length === 0) {
                     document.getElementById('questions').innerHTML = '<p class="loading">📁 Questions folder is empty</p>';
+                    return;
+                }
+                
+                // Filter out .gitkeep
+                const questionFiles = files.filter(f => f.name !== '.gitkeep');
+                
+                if (questionFiles.length === 0) {
+                    document.getElementById('questions').innerHTML = '<p class="loading">✅ No pending questions!</p>';
                     return;
                 }
                 
                 // Load content of each question file
                 const questions = await Promise.all(
-                    files.map(async file => {
+                    questionFiles.map(async file => {
                         const contentResponse = await fetch(file.download_url);
                         const content = await contentResponse.text();
                         return { filename: file.name, content, sha: file.sha };
