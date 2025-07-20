@@ -1,0 +1,76 @@
+# CLAUDE.md - Instructions for Claude Code
+
+## Asking Questions When Blocked
+
+When you need user input or encounter a decision point that requires human judgment, use the ask-claude.sh script:
+
+### Setup (one-time)
+```bash
+# Download the script if not present
+if [ ! -f "./ask-claude.sh" ]; then
+    wget https://raw.githubusercontent.com/karlwaldman/claude-questions/main/ask-claude.sh
+    chmod +x ask-claude.sh
+fi
+```
+
+### Usage
+
+When you need to ask a question:
+
+1. **For urgent decisions** (deployment, data deletion, security):
+```bash
+./ask-claude.sh urgent "Title" "Detailed question with context"
+```
+
+2. **For high priority** (architecture decisions, API changes):
+```bash
+./ask-claude.sh high "Title" "Question details"
+```
+
+3. **For normal questions** (feature clarifications, preferences):
+```bash
+./ask-claude.sh normal "Title" "Question details"
+```
+
+### Waiting for Response
+
+After asking a question, wait for the user's response:
+
+```bash
+# Ask the question
+QUESTION_FILE=$(./ask-claude.sh high "Database Migration" "Should I add indexes?" | grep -oP '(?<=questions/)[^ ]+')
+
+# Wait for response (check every 30 seconds)
+while ! ./ask-claude.sh check "$QUESTION_FILE" 2>/dev/null; do
+    echo "Waiting for response..."
+    sleep 30
+done
+
+# Get the response
+RESPONSE=$(./ask-claude.sh check "$QUESTION_FILE")
+echo "User responded: $RESPONSE"
+```
+
+### Example Scenarios
+
+1. **Before destructive operations**:
+```bash
+./ask-claude.sh urgent "Delete User Data" "User has 500 records. Delete all data for user_id=123?"
+```
+
+2. **Architecture decisions**:
+```bash
+./ask-claude.sh high "API Design" "REST or GraphQL for the new orders service? Current stack uses REST."
+```
+
+3. **Clarifications**:
+```bash
+./ask-claude.sh normal "UI Preference" "Dark mode: CSS variables or separate stylesheets?"
+```
+
+## Important Notes
+
+- Always provide context in your questions
+- Include relevant code snippets or error messages
+- Mention consequences of different choices
+- The user will be notified and can respond from any device
