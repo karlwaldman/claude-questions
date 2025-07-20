@@ -1,0 +1,44 @@
+name: Notify Question
+
+on:
+  push:
+    paths: ['questions/**']
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Get latest question
+        id: question
+        run: |
+          LATEST_FILE=$(ls questions/ | tail -1)
+          if [ ! -z "$LATEST_FILE" ]; then
+            CONTENT=$(head -1 "questions/$LATEST_FILE")
+            echo "content=$CONTENT" >> $GITHUB_OUTPUT
+            echo "file=$LATEST_FILE" >> $GITHUB_OUTPUT
+            
+            if [[ "$CONTENT" == *"URGENT"* ]]; then
+              echo "priority=urgent" >> $GITHUB_OUTPUT
+            elif [[ "$CONTENT" == *"HIGH"* ]]; then
+              echo "priority=high" >> $GITHUB_OUTPUT
+            else
+              echo "priority=normal" >> $GITHUB_OUTPUT
+            fi
+          fi
+      
+      - name: Send push notification
+        if: steps.question.outputs.content && secrets.PUSH_API_KEY
+        uses: techulus/push-github-action@v0.0.2
+        with:
+          api-key: ${{ secrets.PUSH_API_KEY }}
+          title: "🤖 Claude Question (${{ steps.question.outputs.priority }})"
+          message: "${{ steps.question.outputs.content }}"
+          link: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+      
+      - name: Comment on commit (fallback notification)
+        if: steps.question.outputs.content
+        run: |
+          echo "📱 New question: ${{ steps.question.outputs.content }}"
+          echo "🔗 Respond at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
