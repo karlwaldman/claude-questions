@@ -68,9 +68,30 @@ echo "User responded: $RESPONSE"
 ./ask-claude.sh normal "UI Preference" "Dark mode: CSS variables or separate stylesheets?"
 ```
 
+## Status Updates
+
+Keep the user informed of your progress using status updates:
+
+### Posting Status Updates
+```bash
+# Post a status update
+./ask-claude.sh status "Starting database migration task"
+./ask-claude.sh status "Completed API endpoint implementation"
+./ask-claude.sh status "Running test suite - 45/120 tests passed"
+./ask-claude.sh status "BLOCKED: Missing AWS credentials"
+```
+
+### When to Use Status Updates
+- Starting a complex multi-step task
+- Completing major milestones
+- When blocked and waiting for something
+- After fixing significant issues
+- Progress updates on long-running operations
+
 ## Important Notes
 
 - Always provide context in your questions
 - Include relevant code snippets or error messages
 - Mention consequences of different choices
 - The user will be notified and can respond from any device
+- Status updates help the user track your progress across projects
