@@ -18,9 +18,15 @@ cd "$PROJECT_DIR" || { echo -e "${RED}Error: Cannot access directory $PROJECT_DI
 # Download ask-claude.sh if not present
 if [ ! -f "./ask-claude.sh" ]; then
     echo -e "${YELLOW}Downloading ask-claude.sh...${NC}"
-    wget -q https://raw.githubusercontent.com/karlwaldman/claude-questions/main/ask-claude.sh
-    chmod +x ask-claude.sh
-    echo -e "${GREEN}✓ ask-claude.sh downloaded${NC}"
+    # Try enhanced version first, fallback to basic
+    if wget -q https://raw.githubusercontent.com/karlwaldman/claude-questions/main/ask-claude-enhanced.sh -O ask-claude.sh; then
+        chmod +x ask-claude.sh
+        echo -e "${GREEN}✓ Enhanced ask-claude.sh downloaded (terminal + web support)${NC}"
+    else
+        wget -q https://raw.githubusercontent.com/karlwaldman/claude-questions/main/ask-claude.sh
+        chmod +x ask-claude.sh
+        echo -e "${GREEN}✓ ask-claude.sh downloaded${NC}"
+    fi
 else
     echo -e "${YELLOW}! ask-claude.sh already exists, skipping${NC}"
 fi
@@ -29,7 +35,8 @@ fi
 CLAUDE_SECTION="
 ## Async Question Handling
 
-When you need user input or encounter decisions requiring human judgment, use the Claude Questions system:
+When you need user input or encounter decisions requiring human judgment, use the Claude Questions system.
+Questions appear in BOTH the terminal (for immediate response) AND on the web (for mobile/remote response):
 
 ### Quick Usage
 \`\`\`bash
@@ -44,6 +51,9 @@ When you need user input or encounter decisions requiring human judgment, use th
 
 # Check for response
 ./ask-claude.sh check \"question-filename.md\"
+
+# Wait for response with visual feedback
+./ask-claude.sh wait \"question-filename.md\"
 \`\`\`
 
 ### Example: Wait for User Response
