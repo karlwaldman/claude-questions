@@ -54,16 +54,22 @@
     <div id="questions" class="loading">Configure GitHub access above to load questions...</div>
     
     <script>
-        let GITHUB_TOKEN = localStorage.getItem('claude_github_token') || '';
-        let REPO = localStorage.getItem('claude_repo') || '';
+        let GITHUB_TOKEN = (localStorage.getItem('claude_github_token') || '').trim();
+        let REPO = (localStorage.getItem('claude_repo') || '').trim();
         
         // Load saved config
         if (GITHUB_TOKEN) document.getElementById('github-token').value = GITHUB_TOKEN;
         if (REPO) document.getElementById('github-repo').value = REPO;
         
         function saveConfig() {
-            GITHUB_TOKEN = document.getElementById('github-token').value;
-            REPO = document.getElementById('github-repo').value;
+            GITHUB_TOKEN = document.getElementById('github-token').value.trim();
+            REPO = document.getElementById('github-repo').value.trim();
+            
+            // Validate token format
+            if (GITHUB_TOKEN && !GITHUB_TOKEN.match(/^gh[ps]_[a-zA-Z0-9]{36,}$/)) {
+                alert('Invalid token format. GitHub tokens start with ghp_ or ghs_ followed by alphanumeric characters.');
+                return;
+            }
             
             localStorage.setItem('claude_github_token', GITHUB_TOKEN);
             localStorage.setItem('claude_repo', REPO);
@@ -89,7 +95,10 @@
             try {
                 // Get all question files
                 const response = await fetch(`https://api.github.com/repos/${REPO}/contents/questions`, {
-                    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+                    headers: { 
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
                 });
                 
                 if (!response.ok) {
